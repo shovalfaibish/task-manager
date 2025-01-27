@@ -24,6 +24,8 @@ func SetupRoutes(router *gin.Engine) {
 	router.PUT("/tasks/:task_id", AuthMiddleware(), UpdateTask)
 	router.DELETE("/tasks/:task_id", AuthMiddleware(), AdminMiddleware(), DeleteTask)
 	router.GET("/tasks/user/:user_id", AuthMiddleware(), GetTasksByUser)
+	router.GET("/tasks/upcoming", AuthMiddleware(), GetUpcomingDeadlines)
+	router.GET("/tasks/upcoming/all", AuthMiddleware(), AdminMiddleware(), GetAllUpcomingDeadlines)
 }
 
 func AuthMiddleware() gin.HandlerFunc {

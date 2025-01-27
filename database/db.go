@@ -43,6 +43,7 @@ func Migrate() {
         description TEXT,
         status TEXT DEFAULT 'Pending',
         priority TEXT DEFAULT 'Medium',
+        deadline DATETIME,
         user_id INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );`
@@ -83,6 +84,7 @@ func InitTestDB() {
         description TEXT,
         status TEXT DEFAULT 'Pending',
         priority TEXT DEFAULT 'Medium',
+        deadline DATETIME,
         user_id INTEGER NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(id)
     );

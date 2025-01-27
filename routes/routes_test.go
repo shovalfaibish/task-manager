@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"task-manager/database"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -272,7 +273,7 @@ func TestUpdateTaskInvalidData(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `"error":"At least one field (title, description, status, priority) must be provided"`)
+	assert.Contains(t, w.Body.String(), `"error":"At least one field (title, description, status, priority, deadline) must be provided"`)
 }
 
 func TestDeleteTaskNotExist(t *testing.T) {
@@ -663,4 +664,119 @@ func TestUpdateTaskPriority(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"priority":"Low"`)
+}
+
+func TestCreateTaskWithDeadline(t *testing.T) {
+	setupTestDB(t)
+
+	router := gin.Default()
+	router.POST("/login", Login)
+	router.POST("/tasks", AuthMiddleware(), CreateTask)
+
+	createTestUser(t, router)
+	token := loginTestUser(t, router)
+
+	deadline := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	requestBody := `{"title": "TestTask", "description": "TestDescription", "priority": "High", "deadline": "` + deadline + `", "user_id": 1}`
+	req, _ := http.NewRequest("POST", "/tasks", bytes.NewBufferString(requestBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), `"title":"TestTask"`)
+	assert.Contains(t, w.Body.String(), `"description":"TestDescription"`)
+	assert.Contains(t, w.Body.String(), `"priority":"High"`)
+	assert.Contains(t, w.Body.String(), `"deadline":"`+deadline+`"`)
+}
+
+func TestUpdateTaskDeadline(t *testing.T) {
+	setupTestDB(t)
+
+	router := gin.Default()
+	router.POST("/login", Login)
+	router.PUT("/tasks/:task_id", AuthMiddleware(), UpdateTask)
+
+	createTestUser(t, router)
+	token := loginTestUser(t, router)
+
+	database.DB.Exec("INSERT INTO tasks (id, title, description, priority, user_id) VALUES (?, ?, ?, ?, ?)", 1, "TestTask", "TestDescription", "Medium", 1)
+
+	deadline := time.Now().Add(48 * time.Hour).Format(time.RFC3339)
+	requestBody := `{"deadline": "` + deadline + `"}`
+	req, _ := http.NewRequest("PUT", "/tasks/1", bytes.NewBufferString(requestBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"deadline":"`+deadline+`"`)
+}
+
+func TestGetUpcomingDeadlines(t *testing.T) {
+	setupTestDB(t)
+
+	router := gin.Default()
+	router.POST("/login", Login)
+	router.GET("/tasks/upcoming", AuthMiddleware(), GetUpcomingDeadlines)
+
+	createTestUser(t, router)
+	token := loginTestUser(t, router)
+
+	// Set the deadline to be within the next hour
+	deadline := time.Now().Add(30 * time.Minute).Format(time.RFC3339)
+	database.DB.Exec("INSERT INTO tasks (id, title, description, priority, deadline, user_id) VALUES (?, ?, ?, ?, ?, ?)", 1, "TestTask", "TestDescription", "Medium", deadline, 1)
+
+	req, _ := http.NewRequest("GET", "/tasks/upcoming", nil)
+	req.Header.Set("Authorization", token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var tasks []map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &tasks)
+	assert.NoError(t, err)
+
+	assert.Len(t, tasks, 1)
+	assert.Equal(t, "TestTask", tasks[0]["title"])
+	assert.Equal(t, "TestDescription", tasks[0]["description"])
+	assert.Equal(t, deadline, tasks[0]["deadline"])
+}
+
+func TestGetAllUpcomingDeadlines(t *testing.T) {
+	setupTestDB(t)
+
+	router := gin.Default()
+	router.POST("/login", Login)
+	router.GET("/tasks/upcoming/all", AuthMiddleware(), AdminMiddleware(), GetAllUpcomingDeadlines)
+
+	createTestAdmin(t, router)
+	token := loginTestAdmin(t, router)
+
+	deadline := time.Now().Add(30 * time.Minute).Format(time.RFC3339)
+	database.DB.Exec("INSERT INTO tasks (id, title, description, priority, deadline, user_id) VALUES (?, ?, ?, ?, ?, ?)", 1, "TestTask", "TestDescription", "Medium", deadline, 1)
+
+	req, _ := http.NewRequest("GET", "/tasks/upcoming/all", nil)
+	req.Header.Set("Authorization", token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var tasks []map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &tasks)
+	assert.NoError(t, err)
+
+	assert.Len(t, tasks, 1)
+	assert.Equal(t, "TestTask", tasks[0]["title"])
+	assert.Equal(t, "TestDescription", tasks[0]["description"])
+	assert.Equal(t, deadline, tasks[0]["deadline"])
+	assert.Equal(t, 1, int(tasks[0]["user_id"].(float64)))
 }

@@ -5,22 +5,25 @@ import (
 	"net/http"
 	"strconv"
 	"task-manager/database"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type CreateTaskRequest struct {
-	Title       string `json:"title" binding:"required"`
-	Description string `json:"description"`
-	Priority    string `json:"priority" binding:"required"`
-	UserID      int    `json:"user_id" binding:"required"`
+	Title       string    `json:"title" binding:"required"`
+	Description string    `json:"description"`
+	Priority    string    `json:"priority" binding:"required"`
+	Deadline    time.Time `json:"deadline"`
+	UserID      int       `json:"user_id" binding:"required"`
 }
 
 type UpdateTaskRequest struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	Priority    string `json:"priority"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Priority    string    `json:"priority"`
+	Deadline    time.Time `json:"deadline"`
 }
 
 func userExists(userID int) (bool, error) {
@@ -57,8 +60,8 @@ func CreateTask(c *gin.Context) {
 	}
 
 	// Proceed with creating the task
-	result, err := database.DB.Exec(`INSERT INTO tasks (title, description, priority, user_id) VALUES (?, ?, ?, ?)`,
-		req.Title, req.Description, req.Priority, req.UserID)
+	result, err := database.DB.Exec(`INSERT INTO tasks (title, description, priority, deadline, user_id) VALUES (?, ?, ?, ?, ?)`,
+		req.Title, req.Description, req.Priority, req.Deadline, req.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
@@ -70,6 +73,7 @@ func CreateTask(c *gin.Context) {
 		"title":       req.Title,
 		"description": req.Description,
 		"priority":    req.Priority,
+		"deadline":    req.Deadline,
 		"user_id":     req.UserID,
 	})
 }
@@ -138,8 +142,8 @@ func UpdateTask(c *gin.Context) {
 	}
 
 	// Check if at least one field is provided for update
-	if req.Title == "" && req.Description == "" && req.Status == "" && req.Priority == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field (title, description, status, priority) must be provided"})
+	if req.Title == "" && req.Description == "" && req.Status == "" && req.Priority == "" && req.Deadline.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field (title, description, status, priority, deadline) must be provided"})
 		return
 	}
 
@@ -151,10 +155,11 @@ func UpdateTask(c *gin.Context) {
 		"description": req.Description,
 		"status":      req.Status,
 		"priority":    req.Priority,
+		"deadline":    req.Deadline,
 	}
 
 	for field, value := range fields {
-		if value != "" {
+		if value != "" && value != (time.Time{}) {
 			query += field + " = ?, "
 			args = append(args, value)
 		}
@@ -175,6 +180,7 @@ func UpdateTask(c *gin.Context) {
 		"description": req.Description,
 		"status":      req.Status,
 		"priority":    req.Priority,
+		"deadline":    req.Deadline,
 	})
 }
 
@@ -228,6 +234,81 @@ func GetTasksByStatus(c *gin.Context) {
 			"description": description,
 			"user_id":     userID,
 			"status":      status,
+		})
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
+
+func GetUpcomingDeadlines(c *gin.Context) {
+	email, exists := c.Get("email")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var userID int
+	err := database.DB.QueryRow(`SELECT id FROM users WHERE email = ?`, email).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user ID"})
+		return
+	}
+
+	rows, err := database.DB.Query(`SELECT id, title, description, deadline FROM tasks WHERE user_id = ? AND deadline > datetime('now') AND deadline < datetime('now', '+1 day')`, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks with upcoming deadlines"})
+		return
+	}
+	defer rows.Close()
+
+	tasks := []gin.H{}
+	for rows.Next() {
+		var id int
+		var title, description string
+		var deadline time.Time
+
+		if err := rows.Scan(&id, &title, &description, &deadline); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse task"})
+			return
+		}
+
+		tasks = append(tasks, gin.H{
+			"id":          id,
+			"title":       title,
+			"description": description,
+			"deadline":    deadline,
+		})
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
+
+func GetAllUpcomingDeadlines(c *gin.Context) {
+	rows, err := database.DB.Query(`SELECT id, title, description, deadline, user_id FROM tasks WHERE deadline > datetime('now') AND deadline < datetime('now', '+1 day')`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks with upcoming deadlines"})
+		return
+	}
+	defer rows.Close()
+
+	tasks := []gin.H{}
+	for rows.Next() {
+		var id int
+		var title, description string
+		var deadline time.Time
+		var userID int
+
+		if err := rows.Scan(&id, &title, &description, &deadline, &userID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse task"})
+			return
+		}
+
+		tasks = append(tasks, gin.H{
+			"id":          id,
+			"title":       title,
+			"description": description,
+			"deadline":    deadline,
+			"user_id":     userID,
 		})
 	}
 
