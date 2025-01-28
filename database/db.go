@@ -29,6 +29,17 @@ func Connect() {
 
 // Migrate creates the necessary tables in the database
 func Migrate() {
+	// Drop the existing users and tasks tables if they exist
+	_, err := DB.Exec(`DROP TABLE IF EXISTS users`)
+	if err != nil {
+		log.Fatalf("Failed to drop users table: %v", err)
+	}
+
+	_, err = DB.Exec(`DROP TABLE IF EXISTS tasks`)
+	if err != nil {
+		log.Fatalf("Failed to drop tasks table: %v", err)
+	}
+
 	createUsersTable := `
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +62,7 @@ func Migrate() {
     );`
 
 	// Execute SQL statements to create tables
-	_, err := DB.Exec(createUsersTable)
+	_, err = DB.Exec(createUsersTable)
 	if err != nil {
 		log.Fatalf("Failed to create users table: %v", err)
 	}
