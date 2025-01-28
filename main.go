@@ -53,10 +53,6 @@ func checkForUpcomingDeadlines() {
 		}
 
 		// Display the task in the CLI
-		displayTaskInCLI(id, title, deadline, userID)
+		fmt.Printf("Reminder: Task '%s' with ID %d is due at %s for user ID %d\n", title, id, deadline.Format(time.RFC1123), userID)
 	}
-}
-
-func displayTaskInCLI(id int, title string, deadline time.Time, userID int) {
-	fmt.Printf("Reminder: Task '%s' with ID %d is due at %s for user ID %d\n", title, id, deadline.Format(time.RFC1123), userID)
 }

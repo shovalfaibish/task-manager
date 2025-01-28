@@ -59,7 +59,6 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	// Proceed with creating the task
 	result, err := database.DB.Exec(`INSERT INTO tasks (title, description, priority, deadline, user_id) VALUES (?, ?, ?, ?, ?)`,
 		req.Title, req.Description, req.Priority, req.Deadline, req.UserID)
 	if err != nil {

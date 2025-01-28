@@ -69,7 +69,6 @@ func InitTestDB() {
 		log.Fatal("Failed to connect to test database:", err)
 	}
 
-	// Create tables (use the same schema as your main DB)
 	createTables := `
     CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
