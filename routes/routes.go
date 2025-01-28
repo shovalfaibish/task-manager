@@ -12,6 +12,7 @@ import (
 
 var jwtSecret = []byte("your_secret_key")
 
+// SetupRoutes sets up the API routes
 func SetupRoutes(router *gin.Engine) {
 	// User routes
 	router.POST("/users", CreateUser)
@@ -28,6 +29,7 @@ func SetupRoutes(router *gin.Engine) {
 	router.GET("/tasks/upcoming/all", AuthMiddleware(), AdminMiddleware(), GetAllUpcomingDeadlines)
 }
 
+// AuthMiddleware handles JWT authentication
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Println("AuthMiddleware executed")
@@ -65,6 +67,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
+// AdminMiddleware handles admin authorization
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		email, exists := c.Get("email")

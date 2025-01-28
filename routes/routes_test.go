@@ -15,16 +15,19 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// setupTestDB initializes the test database
 func setupTestDB(t *testing.T) {
 	database.InitTestDB()
 	t.Cleanup(database.CloseDB)
 }
 
+// createTestUser creates a test user in the database
 func createTestUser(t *testing.T, router *gin.Engine) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	database.DB.Exec("INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)", 1, "TestUser", "testuser@example.com", hashedPassword)
 }
 
+// loginTestUser logs in the test user and returns the JWT token
 func loginTestUser(t *testing.T, router *gin.Engine) string {
 	loginRequestBody := `{"email": "testuser@example.com", "password": "password"}`
 	loginReq, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginRequestBody))
@@ -43,11 +46,13 @@ func loginTestUser(t *testing.T, router *gin.Engine) string {
 	return token
 }
 
+// createTestAdmin creates a test admin user in the database
 func createTestAdmin(t *testing.T, router *gin.Engine) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	database.DB.Exec("INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)", 1, "AdminUser", "admin@example.com", hashedPassword, "Admin")
 }
 
+// loginTestAdmin logs in the test admin user and returns the JWT token
 func loginTestAdmin(t *testing.T, router *gin.Engine) string {
 	loginRequestBody := `{"email": "admin@example.com", "password": "password"}`
 	loginReq, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginRequestBody))
@@ -66,6 +71,7 @@ func loginTestAdmin(t *testing.T, router *gin.Engine) string {
 	return token
 }
 
+// TestCreateUser tests the creation of a new user
 func TestCreateUser(t *testing.T) {
 	setupTestDB(t)
 
@@ -84,6 +90,7 @@ func TestCreateUser(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"email":"testuser@example.com"`)
 }
 
+// TestUserAuthentication tests user authentication and JWT token generation
 func TestUserAuthentication(t *testing.T) {
 	setupTestDB(t)
 
@@ -97,6 +104,7 @@ func TestUserAuthentication(t *testing.T) {
 	t.Log("JWT token received:", token)
 }
 
+// TestCreateTask tests the creation of a new task
 func TestCreateTask(t *testing.T) {
 	setupTestDB(t)
 
@@ -121,6 +129,7 @@ func TestCreateTask(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"priority":"Medium"`)
 }
 
+// TestUpdateTask tests updating an existing task
 func TestUpdateTask(t *testing.T) {
 	setupTestDB(t)
 
@@ -146,6 +155,7 @@ func TestUpdateTask(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"description":"UpdatedDescription"`)
 }
 
+// TestDeleteTask tests deleting a task
 func TestDeleteTask(t *testing.T) {
 	setupTestDB(t)
 
@@ -168,6 +178,7 @@ func TestDeleteTask(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"message":"Task deleted successfully"`)
 }
 
+// TestGetTasksByUser tests retrieving tasks for a specific user
 func TestGetTasksByUser(t *testing.T) {
 	setupTestDB(t)
 
@@ -208,6 +219,7 @@ func TestGetTasksByUser(t *testing.T) {
 	}
 }
 
+// TestCreateTaskMissingFields tests creating a task with missing fields
 func TestCreateTaskMissingFields(t *testing.T) {
 	setupTestDB(t)
 
@@ -230,6 +242,7 @@ func TestCreateTaskMissingFields(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "'UserID' failed on the 'required' tag")
 }
 
+// TestUpdateTaskNotExist tests updating a non-existent task
 func TestUpdateTaskNotExist(t *testing.T) {
 	setupTestDB(t)
 
@@ -252,6 +265,7 @@ func TestUpdateTaskNotExist(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"error":"Task does not exist"`)
 }
 
+// TestUpdateTaskInvalidData tests updating a task with invalid data
 func TestUpdateTaskInvalidData(t *testing.T) {
 	setupTestDB(t)
 
@@ -276,6 +290,7 @@ func TestUpdateTaskInvalidData(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"error":"At least one field (title, description, status, priority, deadline) must be provided"`)
 }
 
+// TestDeleteTaskNotExist tests deleting a non-existent task
 func TestDeleteTaskNotExist(t *testing.T) {
 	setupTestDB(t)
 
@@ -296,6 +311,7 @@ func TestDeleteTaskNotExist(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"error":"Task does not exist"`)
 }
 
+// TestGetTasksByUserNoTasks tests retrieving tasks for a user with no tasks
 func TestGetTasksByUserNoTasks(t *testing.T) {
 	setupTestDB(t)
 
@@ -316,6 +332,7 @@ func TestGetTasksByUserNoTasks(t *testing.T) {
 	assert.Equal(t, "[]", w.Body.String())
 }
 
+// TestGetTasksByUserInvalidUserID tests retrieving tasks for an invalid user ID
 func TestGetTasksByUserInvalidUserID(t *testing.T) {
 	setupTestDB(t)
 
@@ -336,6 +353,7 @@ func TestGetTasksByUserInvalidUserID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"error":"User does not exist"`)
 }
 
+// TestGetTasksByStatusValid tests retrieving tasks by status
 func TestGetTasksByStatusValid(t *testing.T) {
 	setupTestDB(t)
 
@@ -358,6 +376,7 @@ func TestGetTasksByStatusValid(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"title":"Task1"`)
 }
 
+// TestGetTasksByStatusNoTasks tests retrieving tasks by status when there are no tasks
 func TestGetTasksByStatusNoTasks(t *testing.T) {
 	setupTestDB(t)
 
@@ -378,6 +397,7 @@ func TestGetTasksByStatusNoTasks(t *testing.T) {
 	assert.Equal(t, "[]", w.Body.String())
 }
 
+// TestUpdateUserEmail tests updating a user's email
 func TestUpdateUserEmail(t *testing.T) {
 	setupTestDB(t)
 
@@ -400,6 +420,7 @@ func TestUpdateUserEmail(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"message":"Email updated successfully"`)
 }
 
+// TestUpdateUserRole tests updating a user's role
 func TestUpdateUserRole(t *testing.T) {
 	setupTestDB(t)
 
@@ -424,6 +445,7 @@ func TestUpdateUserRole(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"message":"Role updated successfully"`)
 }
 
+// TestUpdateUserRoleUnauthorized tests updating a user's role without admin privileges
 func TestUpdateUserRoleUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -446,6 +468,7 @@ func TestUpdateUserRoleUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"error":"Forbidden"`)
 }
 
+// TestLogin tests user login
 func TestLogin(t *testing.T) {
 	setupTestDB(t)
 
@@ -458,6 +481,7 @@ func TestLogin(t *testing.T) {
 	t.Log("JWT token received:", token)
 }
 
+// TestProtectedRoute tests accessing a protected route
 func TestProtectedRoute(t *testing.T) {
 	setupTestDB(t)
 
@@ -480,6 +504,7 @@ func TestProtectedRoute(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"message":"Protected route accessed"`)
 }
 
+// TestCreateUserDuplicateEmail tests creating a user with a duplicate email
 func TestCreateUserDuplicateEmail(t *testing.T) {
 	setupTestDB(t)
 
@@ -505,6 +530,7 @@ func TestCreateUserDuplicateEmail(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Failed to create user")
 }
 
+// TestLoginInvalidCredentials tests logging in with invalid credentials
 func TestLoginInvalidCredentials(t *testing.T) {
 	setupTestDB(t)
 
@@ -522,6 +548,7 @@ func TestLoginInvalidCredentials(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid email or password")
 }
 
+// TestCreateTaskUnauthorized tests creating a task without authorization
 func TestCreateTaskUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -539,6 +566,7 @@ func TestCreateTaskUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestUpdateTaskUnauthorized tests updating a task without authorization
 func TestUpdateTaskUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -556,6 +584,7 @@ func TestUpdateTaskUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestDeleteTaskUnauthorized tests deleting a task without authorization
 func TestDeleteTaskUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -571,6 +600,7 @@ func TestDeleteTaskUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestGetTasksByUserUnauthorized tests retrieving tasks by user without authorization
 func TestGetTasksByUserUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -586,6 +616,7 @@ func TestGetTasksByUserUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestGetTasksByStatusUnauthorized tests retrieving tasks by status without authorization
 func TestGetTasksByStatusUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -601,6 +632,7 @@ func TestGetTasksByStatusUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestUpdateUserEmailUnauthorized tests updating a user's email without authorization
 func TestUpdateUserEmailUnauthorized(t *testing.T) {
 	setupTestDB(t)
 
@@ -618,6 +650,7 @@ func TestUpdateUserEmailUnauthorized(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Authorization header required")
 }
 
+// TestCreateTaskWithPriority tests creating a task with a priority
 func TestCreateTaskWithPriority(t *testing.T) {
 	setupTestDB(t)
 
@@ -642,6 +675,7 @@ func TestCreateTaskWithPriority(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"priority":"High"`)
 }
 
+// TestUpdateTaskPriority tests updating a task's priority
 func TestUpdateTaskPriority(t *testing.T) {
 	setupTestDB(t)
 
@@ -666,6 +700,7 @@ func TestUpdateTaskPriority(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"priority":"Low"`)
 }
 
+// TestCreateTaskWithDeadline tests creating a task with a deadline
 func TestCreateTaskWithDeadline(t *testing.T) {
 	setupTestDB(t)
 
@@ -692,6 +727,7 @@ func TestCreateTaskWithDeadline(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"deadline":"`+deadline+`"`)
 }
 
+// TestUpdateTaskDeadline tests updating a task's deadline
 func TestUpdateTaskDeadline(t *testing.T) {
 	setupTestDB(t)
 
@@ -717,6 +753,7 @@ func TestUpdateTaskDeadline(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"deadline":"`+deadline+`"`)
 }
 
+// TestGetUpcomingDeadlines tests retrieving tasks with upcoming deadlines for the authenticated user
 func TestGetUpcomingDeadlines(t *testing.T) {
 	setupTestDB(t)
 
@@ -749,6 +786,7 @@ func TestGetUpcomingDeadlines(t *testing.T) {
 	assert.Equal(t, deadline, tasks[0]["deadline"])
 }
 
+// TestGetAllUpcomingDeadlines tests retrieving tasks with upcoming deadlines for all users (admin only)
 func TestGetAllUpcomingDeadlines(t *testing.T) {
 	setupTestDB(t)
 

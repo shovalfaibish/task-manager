@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Structs for request payloads
 type CreateTaskRequest struct {
 	Title       string    `json:"title" binding:"required"`
 	Description string    `json:"description"`
@@ -26,18 +27,21 @@ type UpdateTaskRequest struct {
 	Deadline    time.Time `json:"deadline"`
 }
 
+// userExists checks if a user exists in the database
 func userExists(userID int) (bool, error) {
 	var exists bool
 	err := database.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)`, userID).Scan(&exists)
 	return exists, err
 }
 
+// taskExists checks if a task exists in the database
 func taskExists(taskID string) (bool, error) {
 	var exists bool
 	err := database.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM tasks WHERE id = ?)`, taskID).Scan(&exists)
 	return exists, err
 }
 
+// CreateTask handles the creation of a new task
 func CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,6 +63,7 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
+	// Insert task into the database
 	result, err := database.DB.Exec(`INSERT INTO tasks (title, description, priority, deadline, user_id) VALUES (?, ?, ?, ?, ?)`,
 		req.Title, req.Description, req.Priority, req.Deadline, req.UserID)
 	if err != nil {
@@ -77,6 +82,7 @@ func CreateTask(c *gin.Context) {
 	})
 }
 
+// GetTasksByUser retrieves tasks for a specific user
 func GetTasksByUser(c *gin.Context) {
 	userID, _ := strconv.Atoi(c.Param("user_id"))
 
@@ -120,6 +126,7 @@ func GetTasksByUser(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// UpdateTask handles updating an existing task
 func UpdateTask(c *gin.Context) {
 	taskID := c.Param("task_id")
 	var req UpdateTaskRequest
@@ -183,6 +190,7 @@ func UpdateTask(c *gin.Context) {
 	})
 }
 
+// DeleteTask handles deleting a task
 func DeleteTask(c *gin.Context) {
 	taskID := c.Param("task_id")
 
@@ -206,6 +214,7 @@ func DeleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }
 
+// GetTasksByStatus retrieves tasks by their status
 func GetTasksByStatus(c *gin.Context) {
 	status := c.Param("status")
 
@@ -239,6 +248,7 @@ func GetTasksByStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// GetUpcomingDeadlines retrieves tasks with upcoming deadlines for the authenticated user
 func GetUpcomingDeadlines(c *gin.Context) {
 	email, exists := c.Get("email")
 	if !exists {
@@ -282,6 +292,7 @@ func GetUpcomingDeadlines(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// GetAllUpcomingDeadlines retrieves tasks with upcoming deadlines for all users (admin only)
 func GetAllUpcomingDeadlines(c *gin.Context) {
 	rows, err := database.DB.Query(`SELECT id, title, description, deadline, user_id FROM tasks WHERE deadline > datetime('now') AND deadline < datetime('now', '+1 day')`)
 	if err != nil {

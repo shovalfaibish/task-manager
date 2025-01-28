@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"task-manager/database"
@@ -23,9 +24,16 @@ func main() {
 	// Start the background job for reminders
 	go startReminderJob()
 
-	router.Run(":8080")
+	// Get the port from the environment variable
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Default port if not specified
+	}
+
+	router.Run(":" + port)
 }
 
+// startReminderJob starts a background job to check for upcoming deadlines
 func startReminderJob() {
 	for {
 		checkForUpcomingDeadlines()
@@ -33,6 +41,7 @@ func startReminderJob() {
 	}
 }
 
+// checkForUpcomingDeadlines checks for tasks with upcoming deadlines and displays them in the CLI
 func checkForUpcomingDeadlines() {
 	rows, err := database.DB.Query(`SELECT id, title, deadline, user_id FROM tasks WHERE deadline > datetime('now') AND deadline < datetime('now', '+1 hour')`)
 	if err != nil {

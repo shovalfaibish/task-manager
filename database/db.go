@@ -9,6 +9,7 @@ import (
 
 var DB *sql.DB
 
+// Connect establishes a connection to the SQLite database
 func Connect() {
 	var err error
 
@@ -26,6 +27,7 @@ func Connect() {
 	log.Println("Connected to database successfully!")
 }
 
+// Migrate creates the necessary tables in the database
 func Migrate() {
 	createUsersTable := `
     CREATE TABLE IF NOT EXISTS users (
@@ -62,6 +64,7 @@ func Migrate() {
 	log.Println("Database migration completed successfully!")
 }
 
+// InitTestDB initializes an in-memory database for testing
 func InitTestDB() {
 	var err error
 	DB, err = sql.Open("sqlite", ":memory:")
@@ -93,6 +96,7 @@ func InitTestDB() {
 	}
 }
 
+// CloseDB closes the database connection
 func CloseDB() {
 	DB.Close()
 }
